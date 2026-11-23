@@ -1,0 +1,992 @@
+openapi: 3.0.3
+info:
+  title: "EntradasYa checkin: API y contratos HTTP consumidos"
+  version: 1.0.0
+  description: Las rutas públicas pasan por Nginx. Las rutas internas y los
+    chequeos usan sus servidores locales.
+servers:
+  - url: http://localhost:8080
+    description: Nginx local
+security:
+  - BearerAuth: []
+paths:
+  /api/tickets:
+    get:
+      tags:
+        - tickets
+      operationId: listOwnTickets
+      summary: Listar entradas emitidas propias
+      description: "Acceso: cliente."
+      parameters:
+        - $ref: "#/components/parameters/OrderFilter"
+      responses:
+        "200":
+          description: Entradas disponibles.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TicketList"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "503":
+          $ref: "#/components/responses/Error503"
+  /api/tickets/{ticketId}/pdf:
+    get:
+      tags:
+        - tickets
+      operationId: downloadOwnTicket
+      summary: Descargar PDF de una entrada propia
+      description: "Acceso: cliente."
+      parameters:
+        - $ref: "#/components/parameters/TicketId"
+      responses:
+        "200":
+          description: PDF de la entrada.
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "503":
+          $ref: "#/components/responses/Error503"
+  /api/checkins:
+    post:
+      tags:
+        - checkin
+      operationId: registerCheckin
+      summary: Validar y registrar ingreso
+      description: "Acceso: portero."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CheckinInput"
+      responses:
+        "200":
+          description: Decisión y datos de ingreso según el resultado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckinResult"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "503":
+          $ref: "#/components/responses/Error503"
+  /api/checkins/{eventId}/count:
+    get:
+      tags:
+        - checkin
+      operationId: getAttendance
+      summary: Consultar total de ingresos
+      description: "Acceso: portero."
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      responses:
+        "200":
+          description: Ingresos registrados para el evento indicado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Attendance"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "503":
+          $ref: "#/components/responses/Error503"
+  /internal/tickets/orders/{orderId}:
+    put:
+      tags:
+        - tickets
+      operationId: issueTickets
+      summary: Emitir entradas para una orden pagada
+      description: "Acceso: orders."
+      security:
+        - InternalToken: []
+      servers:
+        - url: http://127.0.0.1:3005
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IssueTickets"
+      responses:
+        "200":
+          description: Lote completo de entradas emitidas.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TicketList"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "503":
+          $ref: "#/components/responses/Error503"
+  /internal/tickets/lookup:
+    post:
+      tags:
+        - tickets
+      operationId: lookupTicket
+      summary: Consultar un código de entrada
+      description: "Acceso: checkin."
+      security:
+        - InternalToken: []
+      servers:
+        - url: http://127.0.0.1:3005
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TicketLookup"
+      responses:
+        "200":
+          description: Identidad y evento de una entrada emitida.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TicketMatch"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "503":
+          $ref: "#/components/responses/Error503"
+  /health:
+    get:
+      tags:
+        - operación
+      operationId: getHealth
+      summary: Consultar salud local
+      security: []
+      responses:
+        "200":
+          description: Disponible.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+        "503":
+          description: Recurso local indisponible.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+      servers:
+        - url: http://127.0.0.1:3001
+          description: auth
+        - url: http://127.0.0.1:3002
+          description: events
+        - url: http://127.0.0.1:3003
+          description: orders
+        - url: http://127.0.0.1:3004
+          description: payments
+        - url: http://127.0.0.1:3005
+          description: tickets
+        - url: http://127.0.0.1:3006
+          description: notifications
+        - url: http://127.0.0.1:3007
+          description: checkin
+        - url: http://localhost:8080
+          description: web mediante Nginx
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    InternalToken:
+      type: apiKey
+      in: header
+      name: X-Internal-Token
+  parameters:
+    EventId:
+      name: eventId
+      in: path
+      required: true
+      description: Identificador de evento.
+      schema:
+        type: string
+        format: uuid
+    SectorId:
+      name: sectorId
+      in: path
+      required: true
+      description: Identificador de sector.
+      schema:
+        type: string
+        format: uuid
+    OrderId:
+      name: orderId
+      in: path
+      required: true
+      description: Identificador de orden.
+      schema:
+        type: string
+        format: uuid
+    TicketId:
+      name: ticketId
+      in: path
+      required: true
+      description: Identificador de entrada.
+      schema:
+        type: string
+        format: uuid
+    OrderFilter:
+      name: orderId
+      in: query
+      required: false
+      description: Filtra por orden del titular.
+      schema:
+        type: string
+        format: uuid
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: UUID de un intento de compra.
+      schema:
+        type: string
+        format: uuid
+  responses:
+    Error400:
+      description: Solicitud inválida.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Error401:
+      description: Credenciales ausentes, inválidas o expiradas.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Error403:
+      description: Rol o credencial interna insuficiente.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Error404:
+      description: Recurso inexistente o fuera del acceso de la cuenta.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Error409:
+      description: Conflicto de estado o de idempotencia.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Error422:
+      description: Pago rechazado y cupo liberado.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Error503:
+      description: Indisponibilidad temporal.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+  schemas:
+    Health:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum:
+            - ok
+            - unavailable
+    Error:
+      type: object
+      additionalProperties: false
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          minLength: 1
+        message:
+          type: string
+          minLength: 1
+        orderId:
+          type: string
+          format: uuid
+    Registration:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - email
+        - password
+      properties:
+        name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 1
+    Login:
+      type: object
+      additionalProperties: false
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 1
+    User:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - name
+        - email
+        - role
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum:
+            - cliente
+            - organizador
+            - portero
+    Session:
+      type: object
+      additionalProperties: false
+      required:
+        - token
+        - user
+      properties:
+        token:
+          type: string
+          minLength: 1
+        user:
+          $ref: "#/components/schemas/User"
+    EventInput:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - date
+        - venue
+        - imageUrl
+        - description
+      properties:
+        name:
+          type: string
+          minLength: 1
+        date:
+          type: string
+          format: date-time
+        venue:
+          type: string
+          minLength: 1
+        imageUrl:
+          type: string
+          format: uri
+        description:
+          type: string
+          minLength: 1
+    SectorInput:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - unitPriceMinor
+        - capacity
+      properties:
+        name:
+          type: string
+          minLength: 1
+        unitPriceMinor:
+          type: integer
+          minimum: 1
+        capacity:
+          type: integer
+          minimum: 1
+    Sector:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - name
+        - unitPriceMinor
+        - capacity
+        - available
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+        unitPriceMinor:
+          type: integer
+          minimum: 1
+        capacity:
+          type: integer
+          minimum: 1
+        available:
+          type: integer
+          minimum: 0
+    Event:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - name
+        - date
+        - venue
+        - imageUrl
+        - description
+        - status
+        - currency
+        - sectors
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+        date:
+          type: string
+          format: date-time
+        venue:
+          type: string
+          minLength: 1
+        imageUrl:
+          type: string
+          format: uri
+        description:
+          type: string
+          minLength: 1
+        status:
+          type: string
+          enum:
+            - draft
+            - published
+            - cancelled
+        currency:
+          type: string
+          enum:
+            - BOB
+        sectors:
+          type: array
+          items:
+            $ref: "#/components/schemas/Sector"
+    EventList:
+      type: object
+      additionalProperties: false
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Event"
+    EventStatusInput:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum:
+            - published
+            - cancelled
+    Purchase:
+      type: object
+      additionalProperties: false
+      required:
+        - eventId
+        - sectorId
+        - quantity
+        - recipientEmail
+        - paymentCode
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        sectorId:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 6
+        recipientEmail:
+          type: string
+          format: email
+        paymentCode:
+          type: string
+          pattern: ^[0-9]{4}$
+    Order:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - eventId
+        - sectorId
+        - quantity
+        - createdAt
+        - currency
+        - status
+        - ticketStatus
+        - notificationStatus
+      properties:
+        id:
+          type: string
+          format: uuid
+        eventId:
+          type: string
+          format: uuid
+        sectorId:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 6
+        createdAt:
+          type: string
+          format: date-time
+        currency:
+          type: string
+          enum:
+            - BOB
+        status:
+          type: string
+          enum:
+            - pending
+            - paid
+            - rejected
+            - cancelled
+        ticketStatus:
+          type: string
+          enum:
+            - not_started
+            - pending
+            - ready
+        notificationStatus:
+          type: string
+          enum:
+            - not_started
+            - unknown
+            - sent
+            - failed
+        unitPriceMinor:
+          type: integer
+          minimum: 1
+        amountMinor:
+          type: integer
+          minimum: 1
+        failureCode:
+          type: string
+          enum:
+            - SOLD_OUT
+            - EVENT_UNAVAILABLE
+            - NOT_FOUND
+            - PAYMENT_DECLINED
+    OrderList:
+      type: object
+      additionalProperties: false
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Order"
+    Sales:
+      type: object
+      additionalProperties: false
+      required:
+        - eventId
+        - ticketsSold
+        - revenueMinor
+        - currency
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        ticketsSold:
+          type: integer
+          minimum: 0
+        revenueMinor:
+          type: integer
+          minimum: 0
+        currency:
+          type: string
+          enum:
+            - BOB
+    ReservationInput:
+      type: object
+      additionalProperties: false
+      required:
+        - eventId
+        - sectorId
+        - quantity
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        sectorId:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 6
+    Reservation:
+      type: object
+      additionalProperties: false
+      required:
+        - orderId
+        - eventId
+        - sectorId
+        - quantity
+        - eventName
+        - eventDate
+        - eventVenue
+        - sectorName
+        - organizerId
+        - unitPriceMinor
+        - currency
+      properties:
+        orderId:
+          type: string
+          format: uuid
+        eventId:
+          type: string
+          format: uuid
+        sectorId:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 6
+        eventName:
+          type: string
+          minLength: 1
+        eventDate:
+          type: string
+          format: date-time
+        eventVenue:
+          type: string
+          minLength: 1
+        sectorName:
+          type: string
+          minLength: 1
+        organizerId:
+          type: string
+          format: uuid
+        unitPriceMinor:
+          type: integer
+          minimum: 1
+        currency:
+          type: string
+          enum:
+            - BOB
+    PaymentInput:
+      type: object
+      additionalProperties: false
+      required:
+        - amountMinor
+        - currency
+        - paymentCode
+      properties:
+        amountMinor:
+          type: integer
+          minimum: 1
+        currency:
+          type: string
+          enum:
+            - BOB
+        paymentCode:
+          type: string
+          pattern: ^[0-9]{4}$
+    Payment:
+      type: object
+      additionalProperties: false
+      required:
+        - orderId
+        - amountMinor
+        - currency
+        - processedAt
+        - status
+      properties:
+        orderId:
+          type: string
+          format: uuid
+        amountMinor:
+          type: integer
+          minimum: 1
+        currency:
+          type: string
+          enum:
+            - BOB
+        processedAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum:
+            - approved
+            - declined
+    IssueTickets:
+      type: object
+      additionalProperties: false
+      required:
+        - customerId
+        - eventId
+        - sectorId
+        - quantity
+        - eventName
+        - eventDate
+        - eventVenue
+        - sectorName
+      properties:
+        customerId:
+          type: string
+          format: uuid
+        eventId:
+          type: string
+          format: uuid
+        sectorId:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 6
+        eventName:
+          type: string
+          minLength: 1
+        eventDate:
+          type: string
+          format: date-time
+        eventVenue:
+          type: string
+          minLength: 1
+        sectorName:
+          type: string
+          minLength: 1
+    Ticket:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - orderId
+        - eventId
+        - eventName
+        - eventDate
+        - eventVenue
+        - sectorName
+        - pdfUrl
+      properties:
+        id:
+          type: string
+          format: uuid
+        orderId:
+          type: string
+          format: uuid
+        eventId:
+          type: string
+          format: uuid
+        eventName:
+          type: string
+          minLength: 1
+        eventDate:
+          type: string
+          format: date-time
+        eventVenue:
+          type: string
+          minLength: 1
+        sectorName:
+          type: string
+          minLength: 1
+        pdfUrl:
+          type: string
+          example: /api/tickets/54fb74db-5526-404d-8234-c00d405834c9/pdf
+    TicketList:
+      type: object
+      additionalProperties: false
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Ticket"
+    TicketLookup:
+      type: object
+      additionalProperties: false
+      required:
+        - code
+      properties:
+        code:
+          type: string
+          minLength: 1
+    TicketMatch:
+      type: object
+      additionalProperties: false
+      required:
+        - ticketId
+        - eventId
+      properties:
+        ticketId:
+          type: string
+          format: uuid
+        eventId:
+          type: string
+          format: uuid
+    NotificationInput:
+      type: object
+      additionalProperties: false
+      required:
+        - recipientEmail
+        - eventName
+      properties:
+        recipientEmail:
+          type: string
+          format: email
+        eventName:
+          type: string
+          minLength: 1
+    CheckinInput:
+      type: object
+      additionalProperties: false
+      required:
+        - eventId
+        - code
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        code:
+          type: string
+          minLength: 1
+    CheckinAllowed:
+      type: object
+      additionalProperties: false
+      required:
+        - allowed
+        - admittedAt
+      properties:
+        allowed:
+          type: boolean
+          enum:
+            - true
+        admittedAt:
+          type: string
+          format: date-time
+    CheckinRejected:
+      type: object
+      additionalProperties: false
+      required:
+        - allowed
+        - reason
+      properties:
+        allowed:
+          type: boolean
+          enum:
+            - false
+        reason:
+          type: string
+          enum:
+            - INVALID_CODE
+            - WRONG_EVENT
+    CheckinAlreadyUsed:
+      type: object
+      additionalProperties: false
+      required:
+        - allowed
+        - reason
+        - firstAdmittedAt
+      properties:
+        allowed:
+          type: boolean
+          enum:
+            - false
+        reason:
+          type: string
+          enum:
+            - ALREADY_USED
+        firstAdmittedAt:
+          type: string
+          format: date-time
+    CheckinResult:
+      oneOf:
+        - $ref: "#/components/schemas/CheckinAllowed"
+        - $ref: "#/components/schemas/CheckinRejected"
+        - $ref: "#/components/schemas/CheckinAlreadyUsed"
+    Attendance:
+      type: object
+      additionalProperties: false
+      required:
+        - eventId
+        - admittedCount
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        admittedCount:
+          type: integer
+          minimum: 0
