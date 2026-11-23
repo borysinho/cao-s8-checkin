@@ -98,3 +98,9 @@ En **GitHub → Actions → ejecución exitosa → Artifacts** descarga el paque
 Los backends incluyen código TypeScript para Node.js 24, contratos, migraciones cuando corresponden y node_modules de producción instalados desde el lockfile. Web incluye `dist/` compilado y su launcher de Nginx. No incluye `.env` real, bases, PDF de usuarios, imágenes subidas, pruebas ni dependencias de desarrollo. Las fotografías públicas de demostración sí forman parte de web.
 
 El artefacto de Actions se prepara en **Ubuntu 24.04 x64** para la versión exacta de `.nvmrc`. El destino requiere ese Node.js y un entorno compatible; web además requiere Nginx y los backends sus dependencias de infraestructura configuradas por entorno. No hace falta instalar paquetes npm ni compilar en destino. Conserva la persistencia fuera de la entrega y aplica las migraciones del servicio antes de arrancarlo.
+
+## Dependencias de desarrollo y editor
+
+Dentro de este repositorio ejecuta `npm ci --include=dev`: instala también TypeScript y los tipos `@types/node` ya declarados en package.json. No ejecutes npm install desde la carpeta que agrupa los ocho clones, porque no es un proyecto npm. La instalación con `--omit=dev` corresponde al artefacto de producción, no a editar el código fuente.
+
+En VS Code abre la carpeta de este servicio, ejecuta **TypeScript: Select TypeScript Version → Use Workspace Version** y, si conservaba diagnósticos antiguos, **TypeScript: Restart TS Server**. `.vscode/settings.json` señala el TypeScript instalado en este proyecto. Comprueba los errores reales con `npm run typecheck`; `npm test` comprueba sus pruebas.
