@@ -91,6 +91,8 @@ El pipeline verifica y empaqueta cambios en `development` y `main`. El despliegu
 
 ## GitHub Actions y artefacto publicable
 
+El workflow tiene dos jobs: **Verificar** instala las dependencias de desarrollo y ejecuta TypeScript y las pruebas; **Empaquetar** declara `needs: verificar`, por lo que solo comienza cuando el primero termina correctamente. Empaquetar obtiene el mismo código, prepara Node y sus dependencias en un runner nuevo, genera el paquete y lo guarda como artefacto. Si Verificar falla o se cancela, Empaquetar no continúa. Los jobs no comparten node_modules ni archivos locales; cada uno prepara su entorno.
+
 El workflow `.github/workflows/ci.yml` se ejecuta con push y pull requests hacia `development` o `main`, y permite ejecución manual cuando el workflow esté disponible en la rama predeterminada. Instala con `npm ci`, verifica TypeScript, ejecuta pruebas independientes y genera el artefacto con `npm run package`. No necesita otros repositorios, secretos, PostgreSQL ni Mailpit para esta verificación; no realiza despliegues.
 
 En **GitHub → Actions → ejecución exitosa → Artifacts** descarga el paquete identificado con el commit. Se conserva 14 días y contiene un `.tar.gz` y su checksum `.sha256`. Extrae el ZIP de descarga, verifica `sha256sum -c ARCHIVO.tar.gz.sha256` y descomprime el tar. Dentro encontrarás `PUBLICAR.md` y `release.json` con el commit, rama, versión de Node y plataforma. También puedes generar el paquete localmente mediante `npm run package`; en Linux requiere `tar`.

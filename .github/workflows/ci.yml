@@ -15,8 +15,31 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  verify-and-package:
-    name: Verificar y empaquetar
+  verificar:
+    name: Verificar
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Obtener código
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Preparar Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Instalar dependencias
+        run: npm ci --include=dev
+      - name: Verificar TypeScript
+        run: npm run typecheck
+      - name: Ejecutar pruebas independientes
+        run: npm test
+
+  empaquetar:
+    name: Empaquetar
+    needs: verificar
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -31,11 +54,7 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - name: Instalar dependencias
-        run: npm ci
-      - name: Verificar TypeScript
-        run: npm run typecheck
-      - name: Ejecutar pruebas independientes
-        run: npm test
+        run: npm ci --include=dev
       - name: Generar y comprobar artefacto
         run: npm run package
       - name: Guardar artefacto
