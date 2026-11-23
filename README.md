@@ -72,7 +72,7 @@ npm test
 
 Las pruebas locales de contrato HTTP no necesitan PostgreSQL, Mailpit ni otros servicios. Las pruebas de compra e ingreso completos requieren levantar los componentes manualmente. Antes de desplegar, aplica las migraciones del propio servicio con su configuración de destino y comprueba `/health`.
 
-Cada repositorio puede ejecutar estos comandos en su futuro pipeline sin clonar los demás. Los pipelines de despliegue aún no están implementados. No se utilizan Docker, colas, caché, nube, pagos reales ni correo real.
+Cada repositorio puede ejecutar estos comandos en su futuro pipeline sin clonar los demás. El pipeline de verificación y artefactos está en `.github/workflows/ci.yml`; no realiza despliegue. No se utilizan Docker, colas, caché, nube, pagos reales ni correo real.
 
 ## Bitácora
 
@@ -87,4 +87,14 @@ Cada repositorio puede ejecutar estos comandos en su futuro pipeline sin clonar 
 
 Antes de trabajar, ejecuta `git switch development`. Cuando una versión esté validada, intégrala desde `development` hacia `main` mediante un pull request. Después vuelve a `development`. No trabajes directamente sobre `main`.
 
-Los futuros pipelines verificarán los cambios en `development` y desplegarán a producción desde `main`. Crear o actualizar una rama local no despliega la aplicación; los pipelines todavía no están implementados. Al publicar en GitHub, configura `development` como rama predeterminada y protege `main` para exigir revisión y verificaciones antes de integrar cambios.
+El pipeline verifica y empaqueta cambios en `development` y `main`. El despliegue a producción desde `main` queda para una etapa posterior; no se despliega al actualizar una rama. Al publicar en GitHub, configura `development` como rama predeterminada y protege `main` para exigir revisión y verificaciones antes de integrar cambios.
+
+## GitHub Actions y artefacto publicable
+
+El workflow `.github/workflows/ci.yml` se ejecuta con push y pull requests hacia `development` o `main`, y permite ejecución manual cuando el workflow esté disponible en la rama predeterminada. Instala con `npm ci`, verifica TypeScript, ejecuta pruebas independientes y genera el artefacto con `npm run package`. No necesita otros repositorios, secretos, PostgreSQL ni Mailpit para esta verificación; no realiza despliegues.
+
+En **GitHub → Actions → ejecución exitosa → Artifacts** descarga el paquete identificado con el commit. Se conserva 14 días y contiene un `.tar.gz` y su checksum `.sha256`. Extrae el ZIP de descarga, verifica `sha256sum -c ARCHIVO.tar.gz.sha256` y descomprime el tar. Dentro encontrarás `PUBLICAR.md` y `release.json` con el commit, rama, versión de Node y plataforma. También puedes generar el paquete localmente mediante `npm run package`; en Linux requiere `tar`.
+
+Los backends incluyen código TypeScript para Node.js 24, contratos, migraciones cuando corresponden y node_modules de producción instalados desde el lockfile. Web incluye `dist/` compilado y su launcher de Nginx. No incluye `.env` real, bases, PDF de usuarios, imágenes subidas, pruebas ni dependencias de desarrollo. Las fotografías públicas de demostración sí forman parte de web.
+
+El artefacto de Actions se prepara en **Ubuntu 24.04 x64** para la versión exacta de `.nvmrc`. El destino requiere ese Node.js y un entorno compatible; web además requiere Nginx y los backends sus dependencias de infraestructura configuradas por entorno. No hace falta instalar paquetes npm ni compilar en destino. Conserva la persistencia fuera de la entrega y aplica las migraciones del servicio antes de arrancarlo.
